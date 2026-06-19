@@ -1,0 +1,1841 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Digital Footprint Scanner</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap');
+
+:root {
+  --bg:      #f2f4f8;
+  --bg2:     #ffffff;
+  --bg3:     #f7f8fb;
+  --bg4:     #edf0f7;
+  --border:  #dde2ee;
+  --border2: #bfc8de;
+  --accent:  #1d4ed8;
+  --accent2: #2563eb;
+  --accent3: #1e3a8a;
+  --danger:  #dc2626;
+  --warn:    #b45309;
+  --ok:      #15803d;
+  --info:    #0369a1;
+  --text:    #18202e;
+  --muted:   #5e6e8a;
+  --white:   #ffffff;
+  --shadow:  0 1px 3px rgba(20,30,60,0.07), 0 4px 14px rgba(20,30,60,0.06);
+  --shadow2: 0 2px 8px rgba(20,30,60,0.09), 0 8px 28px rgba(20,30,60,0.07);
+  --glow:    0 0 0 3px rgba(29,78,216,0.1);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+
+body {
+  font-family:'Outfit', system-ui, sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  min-height:100vh;
+  font-size:14px;
+  line-height:1.6;
+  overflow-x:hidden;
+}
+
+/* subtle dot texture */
+body::before {
+  content:'';
+  position:fixed; inset:0;
+  background-image: radial-gradient(circle, #bfc8de 1px, transparent 1px);
+  background-size:30px 30px;
+  opacity:0.4;
+  pointer-events:none;
+  z-index:0;
+}
+/* top accent stripe */
+body::after {
+  content:'';
+  position:fixed;
+  top:0; left:0; right:0;
+  height:3px;
+  background:linear-gradient(90deg, var(--accent3) 0%, var(--accent2) 60%, #3b82f6 100%);
+  z-index:100;
+  pointer-events:none;
+}
+
+#app {
+  position:relative;
+  z-index:1;
+  max-width:900px;
+  margin:0 auto;
+  padding:52px 24px 80px;
+}
+
+/* ─── HEADER ─────────────────────────────── */
+.header {
+  text-align:center;
+  margin-bottom:48px;
+  animation: rise 0.6s ease both;
+}
+@keyframes rise {
+  from { opacity:0; transform:translateY(-16px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+
+.header-tag {
+  font-family:'Fira Code', monospace;
+  font-size:11px;
+  letter-spacing:3px;
+  text-transform:uppercase;
+  color:var(--accent2);
+  margin-bottom:16px;
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+}
+.header-tag::before,
+.header-tag::after {
+  content:'';
+  display:inline-block;
+  width:28px; height:1px;
+  background:var(--accent2);
+  opacity:0.4;
+}
+
+.header h1 {
+  font-size:clamp(28px,5.5vw,50px);
+  font-weight:800;
+  color:var(--text);
+  letter-spacing:-1.5px;
+  line-height:1.1;
+  margin-bottom:12px;
+}
+.header h1 .hl {
+  background:linear-gradient(135deg, var(--accent3) 0%, var(--accent2) 100%);
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
+  background-clip:text;
+}
+
+.header-sub {
+  font-size:14px;
+  color:var(--muted);
+  margin-top:10px;
+  letter-spacing:0.2px;
+}
+
+.badge-row {
+  display:flex;
+  justify-content:center;
+  gap:8px;
+  flex-wrap:wrap;
+  margin-top:20px;
+}
+.badge {
+  font-family:'Fira Code', monospace;
+  font-size:10px;
+  letter-spacing:0.5px;
+  padding:4px 12px;
+  border-radius:20px;
+  border:1px solid var(--border2);
+  color:var(--muted);
+  background:var(--bg2);
+}
+.badge.hi {
+  border-color:var(--accent2);
+  color:var(--accent);
+  background:rgba(29,78,216,0.06);
+}
+
+/* ─── FORM ───────────────────────────────── */
+.card {
+  background:var(--bg2);
+  border:1px solid var(--border);
+  border-radius:16px;
+  box-shadow:var(--shadow);
+  padding:36px;
+  margin-bottom:20px;
+  animation: rise 0.5s 0.08s ease both;
+  transition:border-color 0.2s;
+}
+.card:hover { border-color:var(--border2); }
+
+.card-title {
+  font-family:'Fira Code', monospace;
+  font-size:10px;
+  letter-spacing:3px;
+  text-transform:uppercase;
+  color:var(--muted);
+  margin-bottom:24px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+.card-title::after { content:''; flex:1; height:1px; background:var(--border); }
+
+.form-grid {
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:14px;
+  margin-bottom:20px;
+}
+@media(max-width:560px){ .form-grid{ grid-template-columns:1fr; } }
+
+.field { display:flex; flex-direction:column; gap:6px; }
+.field label {
+  font-family:'Fira Code', monospace;
+  font-size:9px;
+  text-transform:uppercase;
+  letter-spacing:2px;
+  color:var(--muted);
+  font-weight:500;
+}
+.field input {
+  background:var(--bg3);
+  border:1.5px solid var(--border);
+  border-radius:10px;
+  padding:12px 14px;
+  color:var(--text);
+  font-family:'Outfit', sans-serif;
+  font-size:14px;
+  outline:none;
+  transition:border-color 0.2s, box-shadow 0.2s, background 0.2s;
+}
+.field input:focus {
+  border-color:var(--accent2);
+  box-shadow:0 0 0 3px rgba(29,78,216,0.1);
+  background:var(--bg2);
+}
+.field input::placeholder { color:#a0aec0; }
+
+.privacy-note {
+  font-size:12px;
+  color:var(--muted);
+  background:rgba(29,78,216,0.04);
+  border:1px solid rgba(29,78,216,0.14);
+  border-radius:10px;
+  padding:12px 16px;
+  margin-bottom:16px;
+  line-height:1.8;
+}
+
+.btn-scan {
+  width:100%;
+  padding:16px;
+  background:var(--accent);
+  border:none;
+  border-radius:10px;
+  color:#fff;
+  font-family:'Outfit', sans-serif;
+  font-size:15px;
+  font-weight:700;
+  letter-spacing:0.3px;
+  cursor:pointer;
+  transition:background 0.2s, transform 0.1s, box-shadow 0.2s;
+  box-shadow:0 3px 12px rgba(29,78,216,0.3);
+}
+.btn-scan:hover { background:var(--accent2); box-shadow:0 5px 18px rgba(29,78,216,0.38); }
+.btn-scan:active { transform:scale(0.997); }
+.btn-scan:disabled { background:#94a3b8; box-shadow:none; cursor:not-allowed; color:#fff; }
+
+.err-box {
+  background:#fef2f2;
+  border:1px solid #fecaca;
+  border-radius:8px;
+  padding:12px 16px;
+  font-size:13px;
+  color:var(--danger);
+  margin-bottom:16px;
+  display:none;
+}
+
+/* ─── CANDIDATES ─────────────────────────── */
+#candidates-wrap { display:none; }
+
+.candidates-card {
+  background:var(--bg2);
+  border:1px solid var(--accent2);
+  border-radius:16px;
+  box-shadow:var(--glow), var(--shadow);
+  padding:28px 32px;
+  margin-bottom:20px;
+}
+.candidates-title {
+  font-size:15px;
+  font-weight:700;
+  color:var(--text);
+  margin-bottom:4px;
+}
+.candidates-sub {
+  font-size:12px;
+  color:var(--muted);
+  margin-bottom:20px;
+}
+.candidate-list { display:flex; flex-direction:column; gap:10px; }
+.candidate-item {
+  display:flex;
+  align-items:center;
+  gap:14px;
+  padding:12px 16px;
+  border-radius:10px;
+  border:1px solid var(--border);
+  background:var(--bg3);
+  cursor:pointer;
+  transition:all 0.2s;
+  text-decoration:none;
+  color:inherit;
+}
+.candidate-item:hover {
+  border-color:var(--accent2);
+  background:var(--bg4);
+  box-shadow:0 0 0 3px rgba(29,78,216,0.08);
+}
+.candidate-item.selected {
+  border-color:var(--accent);
+  background:rgba(29,78,216,0.05);
+}
+.cand-avatar-wrap {
+  position:relative;
+  flex-shrink:0;
+  width:46px; height:46px;
+}
+.cand-avatar {
+  width:46px; height:46px;
+  border-radius:50%;
+  object-fit:cover;
+  display:block;
+  border:2px solid var(--border);
+}
+.cand-platform-dot {
+  position:absolute;
+  bottom:-1px; right:-1px;
+  width:15px; height:15px;
+  border-radius:50%;
+  border:2px solid #fff;
+  display:block;
+  box-shadow:0 1px 3px rgba(0,0,0,0.2);
+}
+.cand-info { flex:1; min-width:0; }
+.cand-name {
+  font-weight:600;
+  color:var(--text);
+  font-size:14px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.cand-meta {
+  font-size:11px;
+  color:var(--muted);
+  font-family:'Fira Code', monospace;
+  margin-top:2px;
+}
+.cand-platform {
+  font-size:10px;
+  font-family:'Fira Code', monospace;
+  padding:3px 8px;
+  border-radius:6px;
+  background:rgba(29,78,216,0.07);
+  color:var(--accent);
+  border:1px solid rgba(29,78,216,0.18);
+  flex-shrink:0;
+}
+.cand-confirm-btn {
+  padding:6px 14px;
+  border-radius:8px;
+  background:var(--accent);
+  color:#fff;
+  border:none;
+  font-size:12px;
+  font-weight:600;
+  cursor:pointer;
+  flex-shrink:0;
+  transition:background 0.15s;
+}
+.cand-confirm-btn:hover { background:var(--accent2); }
+
+.candidates-actions {
+  display:flex;
+  gap:10px;
+  margin-top:18px;
+  flex-wrap:wrap;
+}
+.btn-cand-proceed {
+  flex:1; min-width:160px;
+  padding:13px;
+  background:var(--accent);
+  border:none;
+  border-radius:10px;
+  color:#fff;
+  font-size:14px;
+  font-weight:700;
+  cursor:pointer;
+  transition:background 0.2s, box-shadow 0.2s;
+  box-shadow:0 3px 10px rgba(29,78,216,0.28);
+}
+.btn-cand-proceed:hover { background:var(--accent2); box-shadow:0 4px 14px rgba(29,78,216,0.36); }
+.btn-cand-skip {
+  padding:13px 20px;
+  background:transparent;
+  border:1.5px solid var(--border2);
+  border-radius:10px;
+  color:var(--muted);
+  font-size:13px;
+  font-weight:600;
+  cursor:pointer;
+  transition:border-color 0.2s, color 0.2s;
+}
+.btn-cand-skip:hover { border-color:var(--accent2); color:var(--accent); }
+
+/* ─── PROGRESS ───────────────────────────── */
+#progress-wrap {
+  display:none;
+  background:var(--bg2);
+  border:1px solid var(--border);
+  border-radius:16px;
+  box-shadow:var(--shadow);
+  padding:28px 32px;
+  margin-bottom:20px;
+}
+.prog-label {
+  font-family:'Fira Code', monospace;
+  font-size:11px;
+  color:var(--accent);
+  margin-bottom:12px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.prog-track {
+  height:4px;
+  background:var(--bg4);
+  border-radius:3px;
+  overflow:hidden;
+  margin-bottom:14px;
+  border:1px solid var(--border);
+}
+.prog-fill {
+  height:100%;
+  background:linear-gradient(90deg, var(--accent3), var(--accent2));
+  width:0%;
+  transition:width 0.5s ease;
+  border-radius:3px;
+}
+.step-pills { display:flex; gap:6px; flex-wrap:wrap; }
+.step-pill {
+  font-family:'Fira Code', monospace;
+  font-size:9px;
+  letter-spacing:0.5px;
+  padding:3px 8px;
+  border-radius:20px;
+  border:1px solid var(--border);
+  color:var(--muted);
+  background:var(--bg3);
+  transition:all 0.3s;
+}
+.step-pill.active { border-color:var(--accent2); color:var(--accent); background:rgba(29,78,216,0.07); }
+.step-pill.done   { border-color:var(--ok); color:var(--ok); background:rgba(21,128,61,0.06); }
+
+.spin {
+  display:inline-block;
+  width:11px; height:11px;
+  border:2px solid var(--border2);
+  border-top-color:var(--accent);
+  border-radius:50%;
+  animation:ro 0.7s linear infinite;
+}
+@keyframes ro { to{ transform:rotate(360deg); } }
+
+/* ─── REPORT ─────────────────────────────── */
+#report-wrap { display:none; }
+
+.score-bar {
+  background:var(--bg2);
+  border:1px solid var(--border);
+  border-radius:16px;
+  box-shadow:var(--shadow);
+  padding:28px 32px;
+  margin-bottom:20px;
+  display:flex;
+  align-items:center;
+  gap:28px;
+  flex-wrap:wrap;
+}
+.score-circle {
+  width:90px; height:90px;
+  border-radius:50%;
+  border:3px solid;
+  display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  flex-shrink:0;
+  position:relative;
+}
+.score-circle::after {
+  content:'';
+  position:absolute; inset:-6px;
+  border-radius:50%;
+  background:transparent;
+  border:1px solid;
+  border-color:inherit;
+  opacity:0.2;
+}
+.score-num { font-size:30px; font-weight:800; line-height:1; }
+.score-max { font-family:'Fira Code', monospace; font-size:8px; color:var(--muted); margin-top:2px; }
+.score-info { flex:1; min-width:200px; }
+.score-grade { font-size:20px; font-weight:700; margin-bottom:4px; }
+.score-desc { font-size:13px; color:var(--muted); line-height:1.6; }
+.score-meta { font-family:'Fira Code', monospace; font-size:10px; color:var(--muted); margin-top:8px; }
+.sev-summary { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+.sev-chip {
+  font-family:'Fira Code', monospace;
+  font-size:9px;
+  padding:3px 9px;
+  border-radius:20px;
+  border:1px solid;
+  letter-spacing:0.5px;
+}
+
+/* ─── FINDING CARDS ──────────────────────── */
+.section-hdr {
+  font-family:'Fira Code', monospace;
+  font-size:10px;
+  letter-spacing:3px;
+  text-transform:uppercase;
+  color:var(--muted);
+  margin:28px 0 14px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+.section-hdr::after { content:''; flex:1; height:1px; background:var(--border); }
+
+.finding-card {
+  background:var(--bg2);
+  border:1px solid var(--border);
+  border-radius:12px;
+  box-shadow:var(--shadow);
+  margin-bottom:12px;
+  overflow:hidden;
+  transition:border-color 0.2s;
+}
+.finding-card:hover { border-color:var(--border2); }
+.finding-card[data-sev="critical"] { border-left:3px solid #dc2626; }
+.finding-card[data-sev="high"]     { border-left:3px solid var(--danger); }
+.finding-card[data-sev="medium"]   { border-left:3px solid var(--warn); }
+.finding-card[data-sev="low"]      { border-left:3px solid var(--ok); }
+.finding-card[data-sev="safe"]     { border-left:3px solid #15803d; }
+.finding-card[data-sev="info"]     { border-left:3px solid var(--info); }
+
+.fc-header { display:flex; align-items:flex-start; gap:14px; padding:18px 20px 16px; }
+.fc-icon { font-size:20px; flex-shrink:0; margin-top:2px; }
+.fc-meta { flex:1; }
+.fc-cat {
+  font-family:'Fira Code', monospace;
+  font-size:9px; text-transform:uppercase;
+  letter-spacing:2px; color:var(--muted); margin-bottom:4px;
+}
+.fc-title { font-size:15px; font-weight:700; color:var(--text); margin-bottom:3px; line-height:1.3; }
+.fc-source { font-family:'Fira Code', monospace; font-size:9px; color:var(--muted); }
+
+.sev-badge {
+  font-family:'Fira Code', monospace;
+  font-size:9px; text-transform:uppercase;
+  letter-spacing:1px; padding:3px 9px;
+  border-radius:20px; border:1px solid;
+  flex-shrink:0; margin-top:2px;
+}
+.sb-critical { color:#b91c1c; border-color:#fca5a5; background:#fef2f2; }
+.sb-high     { color:var(--danger); border-color:#fca5a5; background:#fff5f5; }
+.sb-medium   { color:var(--warn);   border-color:#fcd34d; background:#fffbeb; }
+.sb-low      { color:var(--ok);     border-color:#86efac; background:#f0fdf4; }
+.sb-safe     { color:var(--ok);     border-color:#86efac; background:#f0fdf4; }
+.sb-info     { color:var(--info);   border-color:#7dd3fc; background:#f0f9ff; }
+
+.fc-body { padding:0 20px 20px 54px; }
+.fc-detail { font-size:13px; color:var(--muted); line-height:1.8; margin-bottom:12px; white-space:pre-line; }
+
+/* truecaller special card */
+.truecaller-result {
+  margin-top:10px;
+  padding:14px 16px;
+  border-radius:10px;
+  border:1px solid var(--border2);
+  background:var(--bg3);
+}
+.truecaller-result.found {
+  border-color:#fca5a5;
+  background:#fef9f9;
+}
+.truecaller-result.not-found {
+  border-color:#86efac;
+  background:#f9fef9;
+}
+.tc-row { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+.tc-logo { font-size:22px; flex-shrink:0; }
+.tc-text { flex:1; }
+.tc-title { font-size:14px; font-weight:700; color:var(--text); }
+.tc-sub { font-size:12px; color:var(--muted); margin-top:2px; line-height:1.6; }
+.tc-link {
+  font-family:'Fira Code', monospace;
+  font-size:10px;
+  padding:6px 14px;
+  border-radius:8px;
+  background:var(--accent);
+  color:#fff;
+  text-decoration:none;
+  flex-shrink:0;
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  transition:background 0.15s;
+}
+.tc-link:hover { background:var(--accent2); }
+
+/* breach table */
+.breach-table {
+  width:100%; border-collapse:collapse;
+  margin-top:4px; font-size:12px;
+}
+.breach-table th {
+  font-family:'Fira Code', monospace;
+  font-size:9px; text-transform:uppercase;
+  letter-spacing:1px; color:var(--muted);
+  text-align:left; padding:6px 10px;
+  border-bottom:1px solid var(--border);
+  background:var(--bg3);
+}
+.breach-table td {
+  padding:9px 10px;
+  border-bottom:1px solid var(--border);
+  vertical-align:top; line-height:1.5;
+}
+.breach-table tr:last-child td { border-bottom:none; }
+.breach-table tr:hover td { background:var(--bg3); }
+.b-name { font-weight:700; color:var(--danger); }
+.b-data { color:var(--warn); font-size:11px; }
+.b-desc { color:var(--muted); font-size:11px; line-height:1.5; }
+
+/* link chips */
+.link-row { display:flex; flex-wrap:wrap; gap:7px; margin-top:10px; }
+.lchip {
+  font-family:'Fira Code', monospace;
+  font-size:10px; padding:5px 12px;
+  border-radius:6px; border:1px solid var(--border2);
+  color:var(--accent); background:rgba(29,78,216,0.05);
+  cursor:pointer; transition:all 0.15s;
+  text-decoration:none;
+  display:inline-flex; align-items:center; gap:5px;
+}
+.lchip:hover { background:rgba(29,78,216,0.1); border-color:var(--accent2); }
+
+/* dork / record list */
+.dork-list { display:flex; flex-direction:column; gap:5px; margin-top:10px; }
+.dork-item {
+  display:flex; align-items:center; gap:10px;
+  font-size:12px; padding:9px 13px;
+  border-radius:8px; border:1px solid var(--border);
+  background:var(--bg3);
+  color:var(--accent);
+  text-decoration:none;
+  transition:all 0.15s; cursor:pointer;
+}
+.dork-item:hover { background:var(--bg4); border-color:var(--accent2); }
+.dork-item.priority-1 { border-left:3px solid var(--danger); }
+.dork-item.priority-2 { border-left:3px solid var(--warn); }
+.dork-icon { font-size:13px; opacity:0.6; flex-shrink:0; }
+.dork-label { flex:1; }
+.dork-badge {
+  font-family:'Fira Code', monospace;
+  font-size:8px; letter-spacing:0.5px;
+  padding:2px 7px; border-radius:10px;
+  text-transform:uppercase;
+  flex-shrink:0;
+}
+.dork-badge.top { background:#fef2f2; color:var(--danger); border:1px solid #fca5a5; }
+.dork-badge.ng  { background:#f0fdf4; color:var(--ok); border:1px solid #86efac; }
+
+/* platform grid */
+.platform-grid {
+  display:grid;
+  grid-template-columns:repeat(auto-fill, minmax(140px,1fr));
+  gap:7px; margin-top:10px;
+}
+.platform-tile {
+  display:flex; align-items:center; gap:8px;
+  padding:8px 12px; border-radius:8px;
+  border:1px solid var(--border); background:var(--bg3);
+  color:var(--accent); font-size:12px; font-weight:600;
+  text-decoration:none; cursor:pointer;
+  transition:all 0.15s;
+}
+.platform-tile:hover { background:var(--bg4); border-color:var(--accent2); }
+
+.fc-note {
+  font-size:12px; color:var(--muted);
+  background:#f0f7ff;
+  border:1px solid #bfdbfe;
+  border-radius:8px; padding:10px 14px;
+  margin-top:10px; line-height:1.8;
+}
+
+/* ─── RECOMMENDATIONS ────────────────────── */
+.recs-card {
+  background:var(--bg2); border:1px solid var(--border);
+  border-radius:16px; box-shadow:var(--shadow);
+  padding:28px 32px; margin-top:8px; margin-bottom:20px;
+}
+.recs-title { font-size:18px; font-weight:700; color:var(--text); margin-bottom:6px; }
+.recs-sub { font-size:12px; color:var(--muted); margin-bottom:20px; }
+.rec-item {
+  display:flex; gap:14px; align-items:flex-start;
+  padding:14px 16px; border-radius:10px;
+  margin-bottom:10px; border-left:3px solid;
+}
+.rec-item.p-high   { background:#fef9f9; border-color:var(--danger); }
+.rec-item.p-medium { background:#fffdf0; border-color:var(--warn); }
+.rec-item.p-low    { background:#f6fef9; border-color:var(--ok); }
+.rec-icon { font-size:18px; flex-shrink:0; margin-top:1px; }
+.rec-body { flex:1; }
+.rec-body strong { color:var(--text); }
+.rec-body p { font-size:13px; color:var(--muted); line-height:1.7; margin-top:2px; }
+.rec-body a { color:var(--accent2); }
+.rec-priority {
+  font-family:'Fira Code', monospace;
+  font-size:8px; text-transform:uppercase;
+  letter-spacing:1px; padding:2px 7px;
+  border-radius:20px; flex-shrink:0;
+  margin-top:3px; align-self:flex-start;
+}
+.rec-priority.high   { color:var(--danger); background:#fef2f2; border:1px solid #fca5a5; }
+.rec-priority.medium { color:var(--warn);   background:#fffbeb; border:1px solid #fcd34d; }
+.rec-priority.low    { color:var(--ok);     background:#f0fdf4; border:1px solid #86efac; }
+
+/* ─── ACTIONS ────────────────────────────── */
+.action-row { display:flex; gap:12px; flex-wrap:wrap; margin-top:4px; }
+.btn-alt {
+  flex:1; min-width:150px;
+  padding:12px 16px;
+  background:var(--bg2); border:1.5px solid var(--border2);
+  border-radius:10px; color:var(--muted);
+  font-family:'Outfit', sans-serif;
+  font-size:13px; font-weight:600;
+  cursor:pointer; transition:all 0.2s; text-align:center;
+}
+.btn-alt:hover { border-color:var(--accent2); color:var(--accent); background:rgba(29,78,216,0.05); }
+
+/* print styles */
+@media print {
+  body::before, body::after { display:none; }
+  body { background:#fff; color:#111; }
+  .btn-alt, .action-row { display:none; }
+  #form-section, #progress-wrap, #candidates-wrap { display:none !important; }
+  .finding-card { break-inside:avoid; box-shadow:none; }
+}
+
+/* ─── MOBILE ──────────────────────────────── */
+
+/* Prevent iOS/Android zoom on input focus (inputs must be ≥16px) */
+@media(max-width:768px){
+  .field input {
+    font-size:16px !important;
+  }
+}
+
+/* Suppress grey tap flash on Android */
+* { -webkit-tap-highlight-color: transparent; }
+button, a { touch-action: manipulation; }
+
+@media(max-width:600px){
+  /* Tighter app padding on small screens */
+  #app { padding:28px 14px 60px; }
+
+  /* Header */
+  .header { margin-bottom:28px; }
+  .header h1 { letter-spacing:-0.5px; }
+  .badge-row { gap:5px; }
+  .badge { font-size:9px; padding:3px 9px; }
+
+  /* Form card */
+  .card { padding:20px 16px; }
+  .card-title { margin-bottom:16px; }
+
+  /* Candidates */
+  .candidates-card { padding:20px 16px; }
+  .candidate-item { padding:10px 12px; gap:10px; }
+  .cand-name { font-size:13px; }
+  .cand-meta { font-size:10px; }
+  .cand-platform { font-size:9px; padding:2px 6px; max-width:80px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .candidates-actions { flex-direction:column; }
+  .btn-cand-proceed, .btn-cand-skip { width:100%; }
+
+  /* Progress */
+  #progress-wrap { padding:20px 16px; }
+
+  /* Score bar — stack vertically on narrow screens */
+  .score-bar { flex-direction:column; gap:16px; padding:20px 16px; }
+  .score-info { min-width:unset; width:100%; }
+  .score-grade { font-size:17px; }
+
+  /* Finding cards */
+  .finding-card { margin-bottom:10px; }
+  .fc-header { padding:14px 14px 12px; gap:10px; }
+  .fc-icon { font-size:18px; }
+  .fc-title { font-size:13px; }
+  /* Remove large left padding on mobile — use smaller indent */
+  .fc-body { padding:0 14px 16px 14px; }
+
+  /* Breach table — make it scrollable horizontally on mobile */
+  .breach-table-wrap {
+    overflow-x:auto;
+    -webkit-overflow-scrolling:touch;
+    margin-top:4px;
+    border-radius:6px;
+    border:1px solid var(--border);
+  }
+  .breach-table {
+    min-width:480px; /* force horizontal scroll rather than squish */
+    border:none;
+  }
+  .breach-table th, .breach-table td { padding:7px 8px; }
+
+  /* Dork items — wrap label text */
+  .dork-item { align-items:flex-start; flex-wrap:wrap; gap:6px; }
+  .dork-label { word-break:break-word; }
+  .dork-badge { align-self:flex-start; }
+
+  /* Platform grid — 2 columns on mobile */
+  .platform-grid { grid-template-columns:1fr 1fr; }
+  .platform-tile { font-size:11px; padding:7px 10px; }
+
+  /* Recs */
+  .recs-card { padding:20px 16px; }
+  .rec-item { padding:12px 12px; gap:10px; }
+  .rec-body p { font-size:12px; }
+
+  /* Action row */
+  .action-row { flex-direction:column; }
+  .btn-alt { min-width:unset; width:100%; }
+
+  /* Section headers */
+  .section-hdr { font-size:9px; margin:20px 0 10px; }
+
+  /* Truecaller block */
+  .tc-row { flex-direction:column; gap:10px; }
+  .tc-link { width:100%; justify-content:center; text-align:center; }
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-tag">digital intelligence</div>
+    <h1>Footprint <span class="hl">Scanner</span></h1>
+    <p class="header-sub">see what the internet reveals about you · free · no signup · nothing stored</p>
+    <div class="badge-row">
+      <span class="badge hi">✓ Free</span>
+      <span class="badge hi">✓ No Account</span>
+      <span class="badge hi">✓ Private</span>
+      <span class="badge">Truecaller</span>
+      <span class="badge">HaveIBeenPwned</span>
+      <span class="badge">GitHub · Reddit</span>
+      <span class="badge">Google Dorking</span>
+      <span class="badge">Nigeria-Aware</span>
+    </div>
+  </div>
+
+  <!-- FORM -->
+  <div class="card" id="form-section">
+    <div class="card-title">Enter your details to scan</div>
+    <div class="form-grid">
+      <div class="field">
+        <label>👤 Full Name</label>
+        <input type="text" id="inp-name" placeholder="e.g. Amina Ibrahim" autocomplete="off"/>
+      </div>
+      <div class="field">
+        <label>🎭 Social Media Handle</label>
+        <input type="text" id="inp-username" placeholder="e.g. aminaibrahim" autocomplete="off"/>
+      </div>
+      <div class="field">
+        <label>📞 Phone Number</label>
+        <input type="text" id="inp-phone" placeholder="e.g. +2348012345678" autocomplete="off"/>
+      </div>
+      <div class="field">
+        <label>📧 Email Address</label>
+        <input type="email" id="inp-email" placeholder="e.g. amina@example.com" autocomplete="off"/>
+      </div>
+      <div class="field" style="grid-column:1/-1">
+        <label>🌍 Country / Location</label>
+        <input type="text" id="inp-location" placeholder="e.g. Nigeria, Kano" autocomplete="off"/>
+      </div>
+    </div>
+    <div class="privacy-note">
+      🔒 <strong>Privacy first:</strong> Your data is never sent to any of our servers. All searches run directly from your browser to public sources. Nothing is stored, logged, or tracked. Fill in at least one field to begin.
+    </div>
+    <div class="err-box" id="err-box"></div>
+    <button class="btn-scan" id="btn-scan" onclick="startScan()">⚡ Run Scan</button>
+  </div>
+
+  <!-- CANDIDATES -->
+  <div id="candidates-wrap"></div>
+
+  <!-- PROGRESS -->
+  <div id="progress-wrap">
+    <div class="prog-label"><span class="spin"></span>&nbsp;<span id="prog-msg">Initialising scan...</span></div>
+    <div class="prog-track"><div class="prog-fill" id="prog-fill"></div></div>
+    <div class="step-pills" id="step-pills"></div>
+  </div>
+
+  <!-- REPORT -->
+  <div id="report-wrap"></div>
+
+</div>
+
+<script>
+// ══════════════════════════════════════════
+//  HELPERS
+// ══════════════════════════════════════════
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+
+async function go(url, opts={}){
+  try{
+    const r = await fetch(url,{ ...opts, signal:AbortSignal.timeout(9000) });
+    const ct = (r.headers.get('content-type')||'');
+    const data = ct.includes('json') ? await r.json() : await r.text();
+    return { ok:r.ok, status:r.status, data };
+  }catch(e){ return { ok:false, error:e.message }; }
+}
+
+async function sha256hex(str){
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str.trim().toLowerCase()));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+// ── progress ──
+const STEPS = ['Breaches','Email Profile','DNS Check','Truecaller','GitHub','Reddit','Dev Platforms','Social Links','Records & Dorks','Scoring'];
+let stepIdx=0, stepDone=0;
+
+function initProg(){
+  stepIdx=0; stepDone=0;
+  document.getElementById('step-pills').innerHTML =
+    STEPS.map((s,i)=>`<span class="step-pill" id="sp${i}">${s}</span>`).join('');
+  document.getElementById('prog-fill').style.width='0%';
+}
+
+function advProg(msg){
+  stepDone++;
+  const pct=Math.min(95,Math.round(stepDone/STEPS.length*100));
+  document.getElementById('prog-fill').style.width=pct+'%';
+  document.getElementById('prog-msg').textContent=msg;
+  if(stepIdx>0){ const p=document.getElementById('sp'+(stepIdx-1)); if(p){p.classList.remove('active');p.classList.add('done');} }
+  const c=document.getElementById('sp'+stepIdx); if(c){ c.classList.add('active'); }
+  stepIdx++;
+}
+
+function doneProg(){
+  document.getElementById('prog-fill').style.width='100%';
+  document.getElementById('prog-msg').textContent='Scan complete — building report...';
+  STEPS.forEach((_,i)=>{ const el=document.getElementById('sp'+i); if(el){el.classList.remove('active');el.classList.add('done');} });
+}
+
+// ══════════════════════════════════════════
+//  CANDIDATE LOOKUP
+// ══════════════════════════════════════════
+let selectedCandidate = null;
+let pendingInp = null;
+
+// Platform brand colours and icons
+const PLATFORM_META = {
+  'Twitter/X':  { color:'#000000', bg:'#e7e7e7', icon:'𝕏'  },
+  'Instagram':  { color:'#ffffff', bg:'#e1306c', icon:'📸' },
+  'LinkedIn':   { color:'#ffffff', bg:'#0077b5', icon:'in' },
+  'TikTok':     { color:'#ffffff', bg:'#010101', icon:'♪'  },
+  'YouTube':    { color:'#ffffff', bg:'#ff0000', icon:'▶'  },
+  'Facebook':   { color:'#ffffff', bg:'#1877f2', icon:'f'  },
+  'Snapchat':   { color:'#000000', bg:'#fffc00', icon:'👻' },
+  'GitHub':     { color:'#ffffff', bg:'#24292e', icon:'⌥'  },
+  'Reddit':     { color:'#ffffff', bg:'#ff4500', icon:'👾' },
+  'Gravatar':   { color:'#ffffff', bg:'#1e88e5', icon:'G'  },
+};
+
+// Draw a beautiful avatar to a canvas and return a data URL.
+// Shows initials on a platform-coloured gradient background.
+function makeAvatarDataURL(name, platform, size=92){
+  const c = document.createElement('canvas');
+  c.width = c.height = size;
+  const ctx = c.getContext('2d');
+  const pm = PLATFORM_META[platform] || { color:'#fff', bg:'#1d4ed8', icon:'?' };
+
+  // Gradient background
+  const grad = ctx.createLinearGradient(0,0,size,size);
+  grad.addColorStop(0, shadeColor(pm.bg, 20));
+  grad.addColorStop(1, shadeColor(pm.bg, -20));
+  ctx.beginPath();
+  ctx.arc(size/2, size/2, size/2, 0, Math.PI*2);
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // Initials
+  const initials = getInitials(name);
+  ctx.fillStyle = pm.color;
+  ctx.font = `bold ${Math.round(size*0.34)}px "Outfit", "Helvetica Neue", Arial, sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(initials, size/2, size/2 + 1);
+
+  return c.toDataURL('image/png');
+}
+
+function getInitials(name){
+  const parts = (name||'?').trim().split(/\s+/);
+  if(parts.length >= 2) return (parts[0][0] + parts[parts.length-1][0]).toUpperCase();
+  return (parts[0]||'?').slice(0,2).toUpperCase();
+}
+
+function shadeColor(hex, pct){
+  // Lighten or darken a hex color by percentage
+  const n = parseInt(hex.replace('#',''), 16);
+  const r = Math.min(255, Math.max(0, (n>>16) + pct*2));
+  const g = Math.min(255, Math.max(0, ((n>>8)&0xff) + pct*2));
+  const b = Math.min(255, Math.max(0, (n&0xff) + pct*2));
+  return `rgb(${r},${g},${b})`;
+}
+
+// For GitHub and Reddit we can load real avatars cross-origin without CORS issues.
+// For everything else we draw a canvas avatar — instant and never glitches.
+async function tryRealAvatar(url){
+  return new Promise(resolve => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    const timer = setTimeout(()=>{ img.src=''; resolve(null); }, 4000);
+    img.onload = ()=>{
+      clearTimeout(timer);
+      try{
+        const c = document.createElement('canvas');
+        c.width = c.height = 92;
+        const ctx = c.getContext('2d');
+        ctx.beginPath();
+        ctx.arc(46,46,46,0,Math.PI*2);
+        ctx.clip();
+        ctx.drawImage(img,0,0,92,92);
+        resolve(c.toDataURL('image/png'));
+      } catch(e){ resolve(null); }
+    };
+    img.onerror = ()=>{ clearTimeout(timer); resolve(null); };
+    img.src = url;
+  });
+}
+
+async function fetchCandidates(inp){
+  const candidates = [];
+  const seen = new Set();
+
+  const nameParts = (inp.name||'').trim().split(/\s+/);
+  const first = nameParts[0]||'';
+  const last  = nameParts.slice(1).join('')||'';
+
+  // Username variants to try across social platforms
+  const usernameVariants = [...new Set([
+    inp.username,
+    first&&last ? (first+last).toLowerCase()       : null,
+    first&&last ? (first+'.'+last).toLowerCase()   : null,
+    first&&last ? (first+'_'+last).toLowerCase()   : null,
+    first&&last ? (first+last[0]).toLowerCase()     : null,
+    first       ? first.toLowerCase()               : null,
+  ].filter(Boolean))].slice(0,4);
+
+  // Social platforms — ordered by priority
+  const socialPlatforms = [
+    { key:'Twitter/X',  urlFn: u=>`https://twitter.com/${u}`       },
+    { key:'Instagram',  urlFn: u=>`https://instagram.com/${u}`      },
+    { key:'LinkedIn',   urlFn: u=>`https://linkedin.com/in/${u}`    },
+    { key:'Facebook',   urlFn: u=>`https://facebook.com/${u}`       },
+    { key:'TikTok',     urlFn: u=>`https://tiktok.com/@${u}`        },
+    { key:'YouTube',    urlFn: u=>`https://youtube.com/@${u}`       },
+    { key:'Snapchat',   urlFn: u=>`https://snapchat.com/add/${u}`   },
+  ];
+
+  // Add social platform candidates — canvas avatars (instant, no flicker)
+  for(const variant of usernameVariants){
+    for(const sp of socialPlatforms){
+      if(candidates.length >= 7) break;
+      const cid = sp.key+'_'+variant;
+      if(seen.has(cid)) continue;
+      seen.add(cid);
+      candidates.push({
+        id: cid,
+        name: inp.name || variant,
+        handle: '@'+variant,
+        platform: sp.key,
+        avatarDataUrl: makeAvatarDataURL(inp.name||variant, sp.key),
+        realAvatarUrl: null,  // no reliable cross-origin source for social platforms
+        meta: `${sp.key} · @${variant}`,
+        url: sp.urlFn(variant)
+      });
+    }
+    if(candidates.length >= 7) break;
+  }
+
+  // ── GitHub — real avatar works cross-origin ──
+  if(inp.username && candidates.length < 10){
+    const gh = await go(`https://api.github.com/users/${encodeURIComponent(inp.username)}`);
+    if(gh.ok && gh.data?.login){
+      const d = gh.data;
+      const realPic = await tryRealAvatar(d.avatar_url);
+      candidates.push({
+        id:'gh_'+d.login,
+        name: d.name || inp.name || d.login,
+        handle:'@'+d.login,
+        platform:'GitHub',
+        avatarDataUrl: realPic || makeAvatarDataURL(d.name||inp.name||d.login, 'GitHub'),
+        realAvatarUrl: null,
+        meta:[d.location,d.company].filter(Boolean).join(' · ')||'GitHub profile',
+        url:d.html_url
+      });
+    }
+  }
+
+  // ── Reddit — real avatar works cross-origin ──
+  if(inp.username && candidates.length < 10){
+    const rd = await go(`https://www.reddit.com/user/${encodeURIComponent(inp.username)}/about.json`);
+    if(rd.ok && rd.data?.data?.name){
+      const d = rd.data.data;
+      const rdImgUrl = (d.icon_img||'').replace(/&amp;/g,'&').split('?')[0];
+      const realPic = rdImgUrl ? await tryRealAvatar(rdImgUrl) : null;
+      candidates.push({
+        id:'rd_'+d.name,
+        name: inp.name || d.name,
+        handle:'u/'+d.name,
+        platform:'Reddit',
+        avatarDataUrl: realPic || makeAvatarDataURL(inp.name||d.name, 'Reddit'),
+        realAvatarUrl: null,
+        meta:`Reddit · ${(d.total_karma||0).toLocaleString()} karma`,
+        url:`https://reddit.com/user/${d.name}`
+      });
+    }
+  }
+
+  // ── Gravatar — works cross-origin, always returns something ──
+  if(inp.email && candidates.length < 10){
+    const hash = await sha256hex(inp.email);
+    const gr = await go(`https://www.gravatar.com/${hash}.json`);
+    if(gr.ok && gr.data?.entry?.length){
+      const e = gr.data.entry[0];
+      // d=404 means we only get a pic if there's a real one
+      const gravatarImgUrl = `https://www.gravatar.com/avatar/${hash}?s=92&d=identicon`;
+      const realPic = await tryRealAvatar(gravatarImgUrl);
+      candidates.push({
+        id:'gr_'+hash.slice(0,8),
+        name: e.displayName || inp.name || 'Gravatar User',
+        handle: inp.email,
+        platform:'Gravatar',
+        avatarDataUrl: realPic || makeAvatarDataURL(e.displayName||inp.name||'G', 'Gravatar'),
+        realAvatarUrl: null,
+        meta:'Linked to email address',
+        url: e.profileUrl||`https://gravatar.com/${hash}`
+      });
+    }
+  }
+
+  return candidates.slice(0,10);
+}
+
+function renderCandidates(candidates, inp){
+  const wrap = document.getElementById('candidates-wrap');
+  if(!candidates.length){ wrap.style.display='none'; return; }
+
+  const platformColors = {
+    'Twitter/X':'#000','Instagram':'#e1306c','LinkedIn':'#0077b5',
+    'TikTok':'#010101','YouTube':'#ff0000','Facebook':'#1877f2',
+    'Snapchat':'#fffc00','GitHub':'#24292e','Reddit':'#ff4500','Gravatar':'#1e88e5'
+  };
+
+  let html = `
+  <div class="candidates-card">
+    <div class="candidates-title">🔎 Possible profiles found for your details</div>
+    <div class="candidates-sub">These are public profiles that may belong to you based on the information you entered. Click the one that is you, then run the full scan — or skip to continue without selecting.</div>
+    <div class="candidate-list" id="cand-list">`;
+
+  candidates.forEach((c,i)=>{
+    const pc = platformColors[c.platform]||'#1d4ed8';
+    // avatarDataUrl is already a data:image/png string — no network request, no flicker
+    html += `
+    <div class="candidate-item" id="cand-${i}" onclick="selectCandidate(${i})" data-idx="${i}">
+      <div class="cand-avatar-wrap">
+        <img class="cand-avatar" src="${c.avatarDataUrl}" alt="${c.name||''}"/>
+        <span class="cand-platform-dot" style="background:${pc};color:${pc==='#fffc00'?'#000':'#fff'}" title="${c.platform}"></span>
+      </div>
+      <div class="cand-info">
+        <div class="cand-name">${c.name||c.handle}</div>
+        <div class="cand-meta">${c.handle} · ${c.meta}</div>
+      </div>
+      <span class="cand-platform" style="border-color:${pc}33;color:${pc==='#fffc00'||pc==='#000000'?'#111':pc};background:${pc}15">${c.platform}</span>
+    </div>`;
+  });
+
+  html += `
+    </div>
+    <div class="candidates-actions">
+      <button class="btn-cand-proceed" onclick="proceedWithScan(true)">✓ This is me — run full scan</button>
+      <button class="btn-cand-skip" onclick="proceedWithScan(false)">Skip — scan without selecting</button>
+    </div>
+  </div>`;
+
+  wrap.innerHTML = html;
+  wrap.style.display = 'block';
+  wrap.scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+window._candidatesList = [];
+
+function selectCandidate(idx){
+  selectedCandidate = window._candidatesList[idx];
+  document.querySelectorAll('.candidate-item').forEach(el=>el.classList.remove('selected'));
+  const el = document.getElementById('cand-'+idx);
+  if(el) el.classList.add('selected');
+}
+
+async function proceedWithScan(withSelection){
+  document.getElementById('candidates-wrap').style.display='none';
+  document.getElementById('progress-wrap').style.display='block';
+  initProg();
+  try{
+    const results = await runScan(pendingInp, selectedCandidate);
+    doneProg();
+    await sleep(600);
+    document.getElementById('progress-wrap').style.display='none';
+    renderReport(results);
+  }catch(e){
+    document.getElementById('progress-wrap').style.display='none';
+    const err=document.getElementById('err-box');
+    err.textContent='Scan error: '+e.message; err.style.display='block';
+    document.getElementById('btn-scan').disabled=false;
+  }
+}
+
+// ══════════════════════════════════════════
+//  TRUECALLER WEB CHECK
+// ══════════════════════════════════════════
+function buildTruecallerResult(phone, location){
+  const rawPhone = phone.replace(/\D/g,'');
+  // Detect Nigerian numbers
+  const isNigerian = rawPhone.startsWith('234') || phone.startsWith('+234') || phone.startsWith('0');
+  // Build country code for Truecaller search URL
+  let cc = 'ng';
+  if(location){
+    const loc = location.toLowerCase();
+    if(loc.includes('ghana')) cc='gh';
+    else if(loc.includes('kenya')) cc='ke';
+    else if(loc.includes('south africa')) cc='za';
+    else if(loc.includes('uk')||loc.includes('united kingdom')) cc='gb';
+    else if(loc.includes('us')||loc.includes('united states')) cc='us';
+    else if(loc.includes('india')) cc='in';
+    else if(loc.includes('nigeria')||isNigerian) cc='ng';
+  }
+  const tcSearchUrl = `https://www.truecaller.com/search/${cc}/${rawPhone}`;
+  const tcUnlistUrl = `https://www.truecaller.com/unlisting`;
+
+  return { rawPhone, isNigerian, cc, tcSearchUrl, tcUnlistUrl };
+}
+
+// ══════════════════════════════════════════
+//  GOOGLE DORK HELPER — auto-types query
+// ══════════════════════════════════════════
+function googleSearchUrl(query){
+  // encodes query properly so Google receives it pre-filled in the search box
+  return `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+}
+
+// ══════════════════════════════════════════
+//  SCAN
+// ══════════════════════════════════════════
+async function runScan(inp, candidate){
+  const findings=[];
+  const add=f=>findings.push(f);
+
+  // 1 — HIBP
+  advProg('Checking email against breach databases...');
+  if(inp.email){
+    const res = await go(
+      `https://haveibeenpwned.com/api/v3/breachedaccount/${encodeURIComponent(inp.email)}?truncateResponse=false`,
+      { headers:{'hibp-api-key':'','User-Agent':'DigitalFootprintScanner'} }
+    );
+    if(res.status===200 && Array.isArray(res.data)){
+      const n=res.data.length;
+      add({ cat:'Data Breaches', sev:n>5?'critical':n>2?'high':'medium', icon:'🔓',
+        title:`Email found in ${n} known data breach${n>1?'es':''}`,
+        source:'HaveIBeenPwned',
+        detail:`Your email appeared in ${n} separate data breaches. Change any reused passwords immediately and enable 2FA on all accounts.`,
+        breaches: res.data.map(b=>({ name:b.Name, date:b.BreachDate, data:(b.DataClasses||[]).join(', '), desc:(b.Description||'').replace(/<[^>]*>/g,' ').trim() }))
+      });
+    } else if(res.status===404){
+      add({ cat:'Data Breaches', sev:'safe', icon:'✅',
+        title:'Email not found in any known data breaches',
+        source:'HaveIBeenPwned',
+        detail:'Your email does not appear in any breaches tracked by HaveIBeenPwned. Keep using strong, unique passwords and 2FA.'
+      });
+    } else {
+      add({ cat:'Data Breaches', sev:'info', icon:'🔓',
+        title:'Manual breach check required',
+        source:'HaveIBeenPwned',
+        detail:'Browser security prevented a direct API call. Click below to check manually — no signup needed.',
+        links:[{ label:'Check on HaveIBeenPwned ↗', url:`https://haveibeenpwned.com/account/${encodeURIComponent(inp.email)}` }]
+      });
+    }
+  }
+  await sleep(250);
+
+  // 2 — Gravatar
+  advProg('Checking for public profiles linked to email...');
+  if(inp.email){
+    const hash=await sha256hex(inp.email);
+    const gr=await go(`https://www.gravatar.com/${hash}.json`);
+    if(gr.ok && gr.data?.entry?.length){
+      const e=gr.data.entry[0];
+      const accts=(e.accounts||[]).map(a=>a.shortname).join(', ')||'none listed';
+      add({ cat:'Public Email Profile', sev:'medium', icon:'👤',
+        title:'Public Gravatar profile found linked to this email',
+        source:'Gravatar',
+        detail:`Your email is linked to a publicly visible Gravatar profile:\n\nDisplay name: ${e.displayName||'Not set'}\nProfile URL: ${e.profileUrl||'N/A'}\nLinked accounts: ${accts}\n\nAnyone who knows your email can look this up. Update your Gravatar privacy settings at gravatar.com.`,
+        links: e.profileUrl ? [{label:'View Gravatar Profile ↗', url:e.profileUrl}] : []
+      });
+    } else {
+      add({ cat:'Public Email Profile', sev:'safe', icon:'✅',
+        title:'No public Gravatar profile found for this email',
+        source:'Gravatar',
+        detail:'Your email is not linked to any publicly accessible Gravatar profile.'
+      });
+    }
+  }
+  await sleep(200);
+
+  // 3 — DNS
+  advProg('Analysing email domain security...');
+  if(inp.email){
+    const dom=inp.email.split('@')[1];
+    if(dom){
+      const mx=await go(`https://dns.google/resolve?name=${dom}&type=MX`);
+      const hasMX=mx.ok && mx.data?.Answer?.length>0;
+      const spf=await go(`https://dns.google/resolve?name=${dom}&type=TXT`);
+      const hasSPF=spf.data?.Answer?.some(a=>typeof a.data==='string' && a.data.includes('v=spf1'));
+      const dmarc=await go(`https://dns.google/resolve?name=_dmarc.${dom}&type=TXT`);
+      const hasDMARC=dmarc.data?.Answer?.length>0;
+      if(!hasMX){
+        add({ cat:'Email Domain Security', sev:'high', icon:'⚠️',
+          title:`Domain "${dom}" has no valid mail server records`,
+          source:'DNS Lookup (Google)',
+          detail:`The domain "${dom}" has no MX records, which is unusual. This could mean the domain has expired or the email is invalid.`
+        });
+      } else {
+        const issues=[];
+        if(!hasSPF) issues.push('no SPF record (spoofing risk)');
+        if(!hasDMARC) issues.push('no DMARC policy (email spoofing possible)');
+        add({ cat:'Email Domain Security', sev:issues.length===0?'safe':issues.length===1?'low':'medium', icon:'📧',
+          title:`Domain "${dom}" — ${issues.length===0?'fully secured':'missing: '+issues.join(' & ')}`,
+          source:'DNS Lookup (Google)',
+          detail:`MX Records: ✅ Present\nSPF Record: ${hasSPF?'✅ Configured':'❌ Missing'}\nDMARC Policy: ${hasDMARC?'✅ Configured':'❌ Missing'}\n\n${issues.length>0?'Missing records mean someone could send emails pretending to be from this domain.':'Your email domain is well-configured.'}`
+        });
+      }
+    }
+  }
+  await sleep(200);
+
+  // 4 — TRUECALLER (priority check)
+  advProg('Checking Truecaller visibility...');
+  if(inp.phone){
+    const tc = buildTruecallerResult(inp.phone, inp.location);
+
+    // Try fetching the Truecaller search page to detect visibility
+    // (CORS will block, so we always generate the link + explain)
+    const tcBody = `
+    <div class="truecaller-result">
+      <div class="tc-row">
+        <div class="tc-logo">📞</div>
+        <div class="tc-text">
+          <div class="tc-title">Truecaller Visibility Check</div>
+          <div class="tc-sub">
+            Truecaller maintains a global phone directory with <strong>over 3 billion numbers</strong> including millions of Nigerian numbers.
+            Due to browser security rules (CORS), we cannot query Truecaller directly — but clicking the button below opens the Truecaller web search
+            <strong>pre-loaded with your phone number</strong>. If your name, photo, or location appears, your number is publicly listed.<br><br>
+            <strong>If you are listed:</strong> visit <a href="${tc.tcUnlistUrl}" target="_blank" style="color:#1d4ed8">truecaller.com/unlisting</a>
+            to request removal — this is free and usually takes 24–72 hours.
+          </div>
+        </div>
+        <a class="tc-link" href="${tc.tcSearchUrl}" target="_blank">🔍 Check on Truecaller ↗</a>
+      </div>
+    </div>
+    <div class="truecaller-result" style="margin-top:8px;">
+      <div class="tc-row">
+        <div class="tc-logo">🌍</div>
+        <div class="tc-text">
+          <div class="tc-title">Why Truecaller matters in Nigeria</div>
+          <div class="tc-sub">
+            Truecaller is the most widely used caller-ID app in Nigeria with over 60 million active Nigerian users.
+            If your number is listed, any stranger can see your name, city, and sometimes photo simply by calling you or entering your number.
+            This is one of the highest-risk public exposure vectors for Nigerian phone users.
+          </div>
+        </div>
+        <a class="tc-link" href="${tc.tcUnlistUrl}" target="_blank" style="background:#dc2626">🚫 Request Unlisting ↗</a>
+      </div>
+    </div>`;
+
+    add({ cat:'Phone Directory — Truecaller', sev:'high', icon:'📞',
+      title:`Check if your number is publicly listed on Truecaller`,
+      source:'Truecaller (Web)',
+      detail:'',
+      _rawHtml: tcBody
+    });
+  }
+  await sleep(200);
+
+  // 5 — GitHub
+  advProg('Checking GitHub profile...');
+  if(inp.username){
+    const gh=await go(`https://api.github.com/users/${encodeURIComponent(inp.username)}`);
+    if(gh.ok && gh.data?.login){
+      const d=gh.data;
+      const joined=d.created_at?.split('T')[0]||'Unknown';
+      add({ cat:'Developer Profile — GitHub', sev:'medium', icon:'💻',
+        title:`GitHub profile found: @${d.login}`,
+        source:'GitHub Public API',
+        detail:`A public GitHub profile exists for "${inp.username}":\n\nFull name: ${d.name||'Not set'}\nBio: ${d.bio||'Not set'}\nLocation: ${d.location||'Not set'}\nCompany: ${d.company||'Not set'}\nEmail (if public): ${d.email||'Hidden'}\nPublic repos: ${d.public_repos}\nFollowers: ${d.followers}\nAccount created: ${joined}\n\nRemove personal details (email, location, employer) you don't want public.`,
+        links:[{ label:'View GitHub Profile ↗', url:d.html_url }]
+      });
+    } else {
+      add({ cat:'Developer Profile — GitHub', sev:'safe', icon:'✅',
+        title:`No public GitHub profile found for "${inp.username}"`,
+        source:'GitHub Public API',
+        detail:'No public GitHub account matches this username.'
+      });
+    }
+  }
+  await sleep(200);
+
+  // 6 — Reddit
+  advProg('Checking Reddit account...');
+  if(inp.username){
+    const rd=await go(`https://www.reddit.com/user/${encodeURIComponent(inp.username)}/about.json`);
+    if(rd.ok && rd.data?.data?.name){
+      const d=rd.data.data;
+      const created=new Date(d.created_utc*1000).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
+      add({ cat:'Social Media — Reddit', sev:'medium', icon:'💬',
+        title:`Reddit account found: u/${d.name}`,
+        source:'Reddit Public API',
+        detail:`A public Reddit account exists:\n\nUsername: u/${d.name}\nTotal karma: ${d.total_karma?.toLocaleString()}\nAccount created: ${created}\nVerified email: ${d.has_verified_email?'Yes':'No'}\n\nAnyone can browse this account's full post and comment history.`,
+        links:[{ label:'View Reddit Profile ↗', url:`https://reddit.com/user/${d.name}` },
+               { label:'View Post History ↗', url:`https://reddit.com/user/${d.name}/submitted` }]
+      });
+    } else {
+      add({ cat:'Social Media — Reddit', sev:'safe', icon:'✅',
+        title:`No Reddit account found for "${inp.username}"`,
+        source:'Reddit Public API',
+        detail:'No public Reddit account matches this username.'
+      });
+    }
+  }
+  await sleep(200);
+
+  // 7 — Dev.to / Keybase
+  advProg('Checking developer platform profiles...');
+  if(inp.username){
+    const dt=await go(`https://dev.to/api/users/by_username?url=${encodeURIComponent(inp.username)}`);
+    if(dt.ok && dt.data?.username){
+      const d=dt.data;
+      add({ cat:'Developer Profile — Dev.to', sev:'low', icon:'📝',
+        title:`Dev.to profile found: ${d.name||d.username}`,
+        source:'Dev.to API',
+        detail:`Name: ${d.name||'Not set'}\nUsername: @${d.username}\nSummary: ${d.summary||'None'}\nLocation: ${d.location||'Not set'}\nJoined: ${d.joined_at?.split('T')[0]||'Unknown'}`,
+        links:[{ label:'View Dev.to Profile ↗', url:`https://dev.to/${d.username}` }]
+      });
+    }
+    const kb=await go(`https://keybase.io/_/api/1.0/user/lookup.json?username=${encodeURIComponent(inp.username)}`);
+    if(kb.ok && kb.data?.them?.length>0){
+      add({ cat:'Developer Profile — Keybase', sev:'low', icon:'🔑',
+        title:`Keybase identity found for "${inp.username}"`,
+        source:'Keybase API',
+        detail:'A Keybase profile exists. Your linked social accounts and cryptographic keys are publicly associated with this username.',
+        links:[{ label:'View Keybase Profile ↗', url:`https://keybase.io/${inp.username}` }]
+      });
+    }
+  }
+  await sleep(200);
+
+  // 8 — Social platform links
+  advProg('Generating social platform checks...');
+  if(inp.username){
+    const platforms = [
+      { name:'Twitter / X',   icon:'🐦', url:`https://twitter.com/${inp.username}` },
+      { name:'Instagram',     icon:'📸', url:`https://instagram.com/${inp.username}` },
+      { name:'TikTok',        icon:'🎵', url:`https://tiktok.com/@${inp.username}` },
+      { name:'LinkedIn',      icon:'💼', url:`https://linkedin.com/in/${inp.username}` },
+      { name:'Facebook',      icon:'📘', url:`https://facebook.com/${inp.username}` },
+      { name:'Snapchat',      icon:'👻', url:`https://snapchat.com/add/${inp.username}` },
+      { name:'Telegram',      icon:'✈️', url:`https://t.me/${inp.username}` },
+      { name:'YouTube',       icon:'▶️', url:`https://youtube.com/@${inp.username}` },
+      { name:'Pinterest',     icon:'📌', url:`https://pinterest.com/${inp.username}` },
+      { name:'Medium',        icon:'✍️', url:`https://medium.com/@${inp.username}` },
+      { name:'SoundCloud',    icon:'🎧', url:`https://soundcloud.com/${inp.username}` },
+      { name:'Twitch',        icon:'🎮', url:`https://twitch.tv/${inp.username}` },
+    ];
+    add({ cat:'Social Media Presence', sev:'info', icon:'📱',
+      title:`Check "${inp.username}" across ${platforms.length} social platforms`,
+      source:'Username Search',
+      detail:'Click each platform to check if a profile exists at this handle. If a page loads with content, the profile is public. If you see a "not found" page, you\'re clear on that platform.',
+      platforms
+    });
+  }
+  await sleep(200);
+
+  // 9 — Google dorks + public records
+  advProg('Building web exposure and public record checks...');
+  const dorks=[], records=[];
+
+  const countryHint = inp.location ? inp.location.toLowerCase() : '';
+  const isNigeria = countryHint.includes('nigeria') || countryHint.includes('ng') ||
+                    (inp.phone && (inp.phone.startsWith('+234')||inp.phone.startsWith('0')));
+
+  if(inp.name){
+    // All dorks now use proper Google search URLs that pre-fill the search box
+    dorks.push({ icon:'🔍', label:`"${inp.name}" — general web search`, url:googleSearchUrl(`"${inp.name}"`) });
+    dorks.push({ icon:'🔍', label:`"${inp.name}" site:linkedin.com`, url:googleSearchUrl(`"${inp.name}" site:linkedin.com`) });
+    dorks.push({ icon:'🔍', label:`"${inp.name}" address OR phone OR location`, url:googleSearchUrl(`"${inp.name}" address OR phone OR location`) });
+    dorks.push({ icon:'🔍', label:`"${inp.name}" filetype:pdf OR resume OR CV`, url:googleSearchUrl(`"${inp.name}" filetype:pdf OR resume OR cv`) });
+    if(isNigeria){
+      dorks.push({ icon:'🔍', label:`"${inp.name}" site:nairaland.com`, url:googleSearchUrl(`"${inp.name}" site:nairaland.com`) });
+      dorks.push({ icon:'🔍', label:`"${inp.name}" site:facebook.com Nigeria`, url:googleSearchUrl(`"${inp.name}" site:facebook.com Nigeria`) });
+    }
+  }
+  if(inp.email){
+    dorks.push({ icon:'📧', label:`"${inp.email}" — email exposed on the web`, url:googleSearchUrl(`"${inp.email}"`) });
+    dorks.push({ icon:'📧', label:`"${inp.email}" site:facebook.com OR site:linkedin.com`, url:googleSearchUrl(`"${inp.email}" site:facebook.com OR site:linkedin.com`) });
+  }
+  if(inp.phone){
+    dorks.push({ icon:'📞', label:`"${inp.phone}" — phone number on the web`, url:googleSearchUrl(`"${inp.phone}"`) });
+    dorks.push({ icon:'📞', label:`"${inp.phone.replace(/\D/g,'')}" phone lookup`, url:googleSearchUrl(`"${inp.phone.replace(/\D/g,'')}"`) });
+  }
+  if(inp.username){
+    dorks.push({ icon:'🎭', label:`"${inp.username}" profile across the web`, url:googleSearchUrl(`"${inp.username}" profile OR account`) });
+    dorks.push({ icon:'🎭', label:`"${inp.username}" on Twitter, Instagram, TikTok`, url:googleSearchUrl(`"${inp.username}" site:twitter.com OR site:instagram.com OR site:tiktok.com`) });
+  }
+
+  // ── Public record sites — Truecaller FIRST, then Nigeria-relevant ──
+  if(inp.phone){
+    const rawPhone = inp.phone.replace(/\D/g,'');
+    const cc = isNigeria ? 'ng' : 'gb';
+    // 1. Truecaller — TOP PRIORITY
+    records.push({
+      icon:'📞',
+      label:'Truecaller — check phone listing',
+      url:`https://www.truecaller.com/search/${cc}/${rawPhone}`,
+      priority:1,
+      badge:'top'
+    });
+    // 2. Nigeria-relevant: Whos-Calling.ng
+    if(isNigeria){
+      records.push({
+        icon:'🇳🇬',
+        label:'WhosCallingNg — Nigerian phone directory',
+        url:`https://whoscalling.ng/search?number=${encodeURIComponent(inp.phone)}`,
+        priority:2,
+        badge:'ng'
+      });
+    }
+    records.push({
+      icon:'📞',
+      label:'AnyWho reverse phone lookup',
+      url:`https://www.anywho.com/reverse-phone/${rawPhone}`
+    });
+  }
+
+  if(inp.name){
+    if(isNigeria){
+      // Nigeria-first sources
+      records.push({ icon:'🇳🇬', label:'Nairaland — Nigerian forum (personal mentions)', url:`https://www.nairaland.com/search/words/${encodeURIComponent(inp.name)}`, badge:'ng' });
+      records.push({ icon:'📋', label:'PeekYou (global people search)', url:`https://www.peekyou.com/${encodeURIComponent(inp.name.replace(/ /g,'_'))}` });
+      records.push({ icon:'📋', label:'Spokeo (global people search)', url:`https://www.spokeo.com/search?q=${encodeURIComponent(inp.name)}` });
+      records.push({ icon:'📋', label:'TruePeopleSearch', url:`https://www.truepeoplesearch.com/results?name=${encodeURIComponent(inp.name)}` });
+    } else {
+      records.push({ icon:'📋', label:'Whitepages', url:`https://www.whitepages.com/name/${encodeURIComponent(inp.name.replace(/ /g,'-'))}` });
+      records.push({ icon:'📋', label:'TruePeopleSearch', url:`https://www.truepeoplesearch.com/results?name=${encodeURIComponent(inp.name)}` });
+      records.push({ icon:'📋', label:'PeekYou', url:`https://www.peekyou.com/${encodeURIComponent(inp.name.replace(/ /g,'_'))}` });
+      records.push({ icon:'📋', label:'Spokeo', url:`https://www.spokeo.com/search?q=${encodeURIComponent(inp.name)}` });
+      records.push({ icon:'📋', label:'BeenVerified', url:`https://www.beenverified.com/people?firstName=${encodeURIComponent(inp.name.split(' ')[0])}&lastName=${encodeURIComponent(inp.name.split(' ').slice(1).join(' '))}` });
+    }
+  }
+
+  if(inp.email){
+    records.push({ icon:'📧', label:'Hunter.io email verifier', url:`https://hunter.io/email-verifier/${encodeURIComponent(inp.email)}` });
+  }
+
+  if(dorks.length){
+    add({ cat:'Google Web Exposure', sev:'info', icon:'🔎',
+      title:`${dorks.length} targeted Google searches for your information`,
+      source:'Google Dorking',
+      detail:'These precisely targeted searches (called "dorks") show what Google has indexed about you. Each link opens Google with the exact search already typed in. Attackers use these same searches. If sensitive results appear, request removal via Google\'s "Results About You" tool.',
+      dorks
+    });
+  }
+  if(records.length){
+    add({ cat:'Public Record & Directory Sites', sev:'medium', icon:'📂',
+      title:`${records.length} public directories may list your personal information`,
+      source:'Public Records Research',
+      detail:'These sites aggregate public records and people-search data. Truecaller is the most critical for Nigerian/African users. Click each to check your listing. Most offer free opt-out options.',
+      dorks: records
+    });
+  }
+
+  // 10 — Score
+  advProg('Calculating exposure score...');
+  await sleep(300);
+  const w={ critical:30, high:20, medium:10, low:5, info:0, safe:0 };
+  const score=Math.min(100, findings.reduce((t,f)=>t+(w[f.sev]||0),0));
+
+  return { findings, score, ts:new Date().toLocaleString('en-GB',{dateStyle:'full',timeStyle:'short'}), inp };
+}
+
+// ══════════════════════════════════════════
+//  START
+// ══════════════════════════════════════════
+async function startScan(){
+  const name     = document.getElementById('inp-name').value.trim();
+  const email    = document.getElementById('inp-email').value.trim();
+  const phone    = document.getElementById('inp-phone').value.trim();
+  const username = document.getElementById('inp-username').value.trim();
+  const location = document.getElementById('inp-location').value.trim();
+
+  const err=document.getElementById('err-box');
+  err.style.display='none';
+  if(!name&&!email&&!phone&&!username){
+    err.textContent='Please fill in at least one field before scanning.';
+    err.style.display='block'; return;
+  }
+
+  document.getElementById('btn-scan').disabled=true;
+  document.getElementById('report-wrap').style.display='none';
+  document.getElementById('report-wrap').innerHTML='';
+  document.getElementById('candidates-wrap').style.display='none';
+
+  pendingInp = { name, email, phone, username, location };
+  selectedCandidate = null;
+
+  // Show candidate loader briefly
+  document.getElementById('candidates-wrap').innerHTML=`
+  <div class="candidates-card" style="text-align:center;padding:24px">
+    <span class="spin" style="width:16px;height:16px;border-width:3px;display:inline-block;margin-right:8px"></span>
+    <span style="color:var(--muted);font-size:13px">Finding matching profiles...</span>
+  </div>`;
+  document.getElementById('candidates-wrap').style.display='block';
+
+  try{
+    const candidates = await fetchCandidates(pendingInp);
+    window._candidatesList = candidates;
+    if(candidates.length > 0){
+      renderCandidates(candidates, pendingInp);
+    } else {
+      document.getElementById('candidates-wrap').style.display='none';
+      // Proceed directly to scan
+      document.getElementById('progress-wrap').style.display='block';
+      initProg();
+      const results = await runScan(pendingInp, null);
+      doneProg();
+      await sleep(600);
+      document.getElementById('progress-wrap').style.display='none';
+      renderReport(results);
+    }
+  }catch(e){
+    document.getElementById('candidates-wrap').style.display='none';
+    document.getElementById('progress-wrap').style.display='block';
+    initProg();
+    try{
+      const results = await runScan(pendingInp, null);
+      doneProg();
+      await sleep(600);
+      document.getElementById('progress-wrap').style.display='none';
+      renderReport(results);
+    }catch(e2){
+      document.getElementById('progress-wrap').style.display='none';
+      err.textContent='Scan error: '+e2.message; err.style.display='block';
+      document.getElementById('btn-scan').disabled=false;
+    }
+  }
+}
+
+// ══════════════════════════════════════════
+//  RENDER REPORT
+// ══════════════════════════════════════════
+function scoreCol(s){ return s>=70?'#dc2626':s>=40?'#b45309':s>=20?'#2563eb':'#15803d'; }
+function scoreGrade(s){ return s>=70?'Critical Exposure':s>=40?'High Exposure':s>=20?'Moderate Exposure':'Low Exposure'; }
+function scoreDesc(s){
+  if(s>=70) return 'Significant personal information is publicly exposed. Immediate action is recommended.';
+  if(s>=40) return 'Notable personal information is accessible. Review and act on high-priority findings.';
+  if(s>=20) return 'Some personal information is publicly visible. Follow the recommendations to reduce your exposure.';
+  return 'Your digital footprint appears relatively small. Keep following best practices.';
+}
+
+function buildRecs(findings){
+  const sevs=findings.map(f=>f.sev);
+  const cats=findings.map(f=>f.cat);
+  const list=[];
+
+  // Always add Truecaller removal as top priority if phone was provided
+  if(findings.some(f=>f.cat.includes('Truecaller'))){
+    list.push({p:'high',icon:'📞',title:'Remove yourself from Truecaller',body:`Truecaller publicly links your name, photo, and location to your phone number. Go to <a href="https://www.truecaller.com/unlisting" target="_blank">truecaller.com/unlisting</a>, enter your number, and verify via SMS. Removal usually takes 24–72 hours. This is the single most important step for Nigerian phone users.`});
+  }
+  if(sevs.includes('critical')||sevs.includes('high'))
+    list.push({p:'high',icon:'🔑',title:'Change compromised passwords immediately',body:`Use a free password manager like <a href="https://bitwarden.com" target="_blank">Bitwarden</a> to generate strong, unique passwords for every account.`});
+  if(findings.some(f=>f.cat==='Data Breaches'&&f.sev!=='safe'))
+    list.push({p:'high',icon:'🛡️',title:'Enable two-factor authentication (2FA) on all important accounts',body:`Add 2FA to your email, banking, and social media. Use an authenticator app (Google Authenticator or Authy) rather than SMS for better security.`});
+  if(cats.some(c=>c.includes('Public Record')))
+    list.push({p:'medium',icon:'📋',title:'Opt out of data broker and people-search sites',body:`For Nairaland: contact admin to remove personal threads. For global sites like Spokeo and Whitepages, visit their opt-out pages and submit removal requests. Search "<strong>[site name] opt out</strong>" to find each page.`});
+  if(cats.some(c=>c.includes('Social Media')||c.includes('Reddit')))
+    list.push({p:'medium',icon:'📱',title:'Audit your social media privacy settings',body:`Set profiles to private where possible. Remove contact details from public bios. Review your post history — old posts may contain personal details you have forgotten about.`});
+  if(cats.some(c=>c.includes('Google')))
+    list.push({p:'medium',icon:'🔎',title:'Request removal of personal information from Google',body:`Use Google's <a href="https://myaccount.google.com/data-and-privacy" target="_blank">"Results About You"</a> tool to request removal of personal information from search results. This is free.`});
+  list.push({p:'low',icon:'📧',title:'Use email aliases for website signups',body:`<a href="https://simplelogin.io" target="_blank">SimpleLogin</a> (free) lets you create disposable alias addresses. Your real email stays private — if an alias is breached, just delete it.`});
+  list.push({p:'low',icon:'🌐',title:'Use a VPN, especially on public Wi-Fi',body:`<a href="https://protonvpn.com" target="_blank">Proton VPN</a> has a genuinely free tier with no data limits. It prevents websites from logging your real IP address and protects your traffic.`});
+  list.push({p:'low',icon:'🔔',title:'Set up Google Alerts for your name',body:`Go to <a href="https://google.com/alerts" target="_blank">google.com/alerts</a> and create alerts for your full name in quotes. You'll get an email any time Google finds new results mentioning you.`});
+  list.push({p:'low',icon:'🕵️',title:'Repeat this scan every 3–6 months',body:`Your footprint changes over time as new breaches occur and data brokers update their records. Run this scan periodically to catch new exposures early.`});
+  return list;
+}
+
+function renderReport({findings, score, ts, inp}){
+  const col=scoreCol(score);
+  const grade=scoreGrade(score);
+  const desc=scoreDesc(score);
+  const scanned=[inp.name,inp.email,inp.phone,inp.username,inp.location].filter(Boolean).join(' · ');
+
+  const sevOrder=['critical','high','medium','low','safe','info'];
+  const sevCols={ critical:'#dc2626',high:'#dc2626',medium:'#b45309',low:'#15803d',safe:'#15803d',info:'#0369a1' };
+  const sevBg  ={ critical:'#fef2f2',high:'#fff5f5',medium:'#fffbeb',low:'#f0fdf4',safe:'#f0fdf4',info:'#f0f9ff' };
+
+  const pillHtml=sevOrder.filter(s=>findings.some(f=>f.sev===s)).map(s=>{
+    const n=findings.filter(f=>f.sev===s).length;
+    return `<span class="sev-chip" style="color:${sevCols[s]};border-color:${sevCols[s]};background:${sevBg[s]}">${n} ${s}</span>`;
+  }).join('');
+
+  let html=`
+  <div class="score-bar">
+    <div class="score-circle" style="border-color:${col}">
+      <div class="score-num" style="color:${col}">${score}</div>
+      <div class="score-max">/ 100</div>
+    </div>
+    <div class="score-info">
+      <div class="score-grade" style="color:${col}">${grade}</div>
+      <div class="score-desc">${desc}</div>
+      <div class="score-meta">Scanned: ${ts} · ${scanned}</div>
+      <div class="sev-summary">${pillHtml}</div>
+    </div>
+  </div>
+  <div class="section-hdr">Findings — ${findings.length} checks completed</div>`;
+
+  findings.forEach(f=>{
+    let body='';
+    // Support raw HTML injection for Truecaller block
+    if(f._rawHtml){ body+=f._rawHtml; }
+    else if(f.detail){ body+=`<div class="fc-detail">${f.detail}</div>`; }
+
+    if(f.breaches?.length){
+      body+=`<div class="breach-table-wrap"><table class="breach-table">
+        <thead><tr><th>Service</th><th>Date</th><th>Data Exposed</th><th>Details</th></tr></thead><tbody>`;
+      f.breaches.forEach(b=>{
+        body+=`<tr>
+          <td><span class="b-name">${b.name}</span></td>
+          <td>${b.date||'Unknown'}</td>
+          <td><span class="b-data">${b.data||'Unknown'}</span></td>
+          <td><span class="b-desc">${b.desc||'—'}</span></td>
+        </tr>`;
+      });
+      body+=`</tbody></table></div>`;
+    }
+
+    if(f.platforms?.length){
+      body+=`<div class="platform-grid">`;
+      f.platforms.forEach(p=>{ body+=`<a class="platform-tile" href="${p.url}" target="_blank">${p.icon} ${p.name}</a>`; });
+      body+=`</div>`;
+      body+=`<div class="fc-note">ℹ️ Each link opens that platform with your handle pre-loaded. If a profile page appears, a public account exists. A "not found" page means you're clear on that platform.</div>`;
+    }
+
+    if(f.dorks?.length){
+      body+=`<div class="dork-list">`;
+      f.dorks.forEach(d=>{
+        const priorityClass = d.priority===1 ? 'priority-1' : d.priority===2 ? 'priority-2' : '';
+        const badgeHtml = d.badge==='top' ? '<span class="dork-badge top">⭐ Top Priority</span>'
+                        : d.badge==='ng'  ? '<span class="dork-badge ng">🇳🇬 Nigeria</span>'
+                        : '';
+        body+=`<a class="dork-item ${priorityClass}" href="${d.url}" target="_blank">
+          <span class="dork-icon">${d.icon||'🔗'}</span>
+          <span class="dork-label">${d.label}</span>
+          ${badgeHtml}
+        </a>`;
+      });
+      body+=`</div>`;
+    }
+
+    if(f.links?.length){
+      body+=`<div class="link-row">`;
+      f.links.forEach(l=>{ body+=`<a class="lchip" href="${l.url}" target="_blank">↗ ${l.label}</a>`; });
+      body+=`</div>`;
+    }
+
+    html+=`
+    <div class="finding-card" data-sev="${f.sev}">
+      <div class="fc-header">
+        <div class="fc-icon">${f.icon}</div>
+        <div class="fc-meta">
+          <div class="fc-cat">${f.cat}</div>
+          <div class="fc-title">${f.title}</div>
+          <div class="fc-source">Source: ${f.source}</div>
+        </div>
+        <span class="sev-badge sb-${f.sev}">${f.sev}</span>
+      </div>
+      <div class="fc-body">${body}</div>
+    </div>`;
+  });
+
+  // Recommendations
+  const rList=buildRecs(findings);
+  html+=`
+  <div class="section-hdr">Recommended Actions — ${rList.length} steps to secure your privacy</div>
+  <div class="recs-card">
+    <div class="recs-title">🛡️ Your Security Action Plan</div>
+    <p class="recs-sub">Tailored based on your scan results. Work top-to-bottom — high priority first.</p>`;
+  rList.forEach(r=>{
+    html+=`
+    <div class="rec-item p-${r.p}">
+      <div class="rec-icon">${r.icon}</div>
+      <div class="rec-body">
+        <strong>${r.title}</strong>
+        <p>${r.body}</p>
+      </div>
+      <span class="rec-priority ${r.p}">${r.p}</span>
+    </div>`;
+  });
+  html+=`</div>
+  <div class="action-row">
+    <button class="btn-alt" onclick="rescan()">↩ Scan Again</button>
+    <button class="btn-alt" onclick="window.print()">🖨️ Print / Save PDF</button>
+  </div>`;
+
+  const wrap=document.getElementById('report-wrap');
+  wrap.innerHTML=html;
+  wrap.style.display='block';
+  wrap.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function rescan(){
+  document.getElementById('report-wrap').style.display='none';
+  document.getElementById('report-wrap').innerHTML='';
+  document.getElementById('candidates-wrap').style.display='none';
+  document.getElementById('candidates-wrap').innerHTML='';
+  document.getElementById('btn-scan').disabled=false;
+  ['inp-name','inp-email','inp-phone','inp-username','inp-location'].forEach(id=>document.getElementById(id).value='');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+document.addEventListener('keydown',e=>{
+  if(e.key==='Enter'&&!document.getElementById('btn-scan').disabled) startScan();
+});
+</script>
+</body>
+</html>
